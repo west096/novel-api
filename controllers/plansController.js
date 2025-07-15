@@ -40,13 +40,18 @@ function updatePlan(req, res){
 function deletePlan(req, res){
     const planId = parseInt(req.params.id);
     const index = plans.findIndex(p => p.id === planId);
+
     if(index === -1) {
         return res.status(404).json({error: '기획서를 찾을 수 없습니다.'});
     }
 
     const deleted = plans.splice(index, 1);
     savePlans(plans);
-    res.json(deleted[0]);
+
+    return res.status(200).json({
+      message: `ID가 ${planId}인 기획서가 삭제되었습니다.`,
+      deleted: deleted[0],
+    });
 }
 
 module.exports = {
