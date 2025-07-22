@@ -2,9 +2,17 @@ const { loadPlans, savePlans } = require('../utils/fileHandler');
 
 let plans = loadPlans(); //서버 시작할 때 JSON파일 불러옴
 
-function getPlans(req, res){
-    res.json(plans); //전체 목록 응답
-}
+const pool = require('../utils/db');
+
+exports.getPlans = async(req, res) => {
+  try{
+    const result = await pool.query('SELECT * FROM plans ORDER BY id ASC');
+    res.json(result.rows);
+  }catch(err){
+    console.error('Error fetching plans:', err);
+    res.status(500).json({ error: 'DB error'});
+  }
+};
 
 function createPlan(req, res){
   const {title, genre} = req.body;
@@ -54,9 +62,8 @@ function deletePlan(req, res){
     });
 }
 
-module.exports = {
-    getPlans,
+/*module.exports = {
     createPlan,
     updatePlan,
     deletePlan,
-};
+};*/

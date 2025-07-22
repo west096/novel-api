@@ -7,6 +7,6 @@ const plansRouter = require('./routes/plans');
 const app = express();
 
 app.use(express.json());
-app.use('/plans', plansRouter);
+app.use('/', plansRouter);
 
 module.exports = app;
