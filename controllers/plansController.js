@@ -4,66 +4,75 @@ let plans = loadPlans(); //서버 시작할 때 JSON파일 불러옴
 
 const pool = require('../utils/db');
 
-exports.getPlans = async(req, res) => {
-  try{
+exports.getPlans = async (req, res) => {
+  try {
     const result = await pool.query('SELECT * FROM plans ORDER BY id ASC');
     res.json(result.rows);
-  }catch(err){
+  } catch (err) {
     console.error('Error fetching plans:', err);
-    res.status(500).json({ error: 'DB error'});
+    res.status(500).json({ error: 'DB error' });
   }
 };
 
-function createPlan(req, res){
-  const {title, genre} = req.body;
+exports.createPlan = async (req, res) => {
+  const { title, genre, author } = req.body;
 
-  const newPlan = {
-    id: plans.length ? plans[plans.length - 1].id + 1 : 1, //ID 생성
-    title,
-    genre,
-  };
-
-  plans.push(newPlan); //배열에 추가
-  savePlans(plans); // 파일로 저장
-  res.status(201).json(newPlan); //응답
-}
-
-function updatePlan(req, res){
-  const planId = parseInt(req.params.id);
-  const index = plans.findIndex(p => p.id === planId);
-
-  if (index === -1){
-    return res.status(404).json({error: '기획서를 찾을 수 없습니다.'});
+  if (!title || !author) {
+    return res.status(400).json({ error: 'title과 author는 필수입니다.' });
   }
 
-  const { title, genre } = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO plans (title, genre, author)
+      VALUES ($1, $2, $3)
+      RETURNING *`,
+      [title, genre, author]
+    );
 
-  //기존 데이터 덮어쓰기
-  plans[index] = {id: planId, title, genre};
-  savePlans(plans);
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.log(req.body);//
+    console.error('Error inserting plan:', err);
+    res.status(500).json({ error: 'DB error' });
+  }
+};
 
-  res.json(plans[index]);
-}
+exports.updatePlan = async (req, res) => {
+  const { id } = req.params;
+  const { title, genre, author } = req.body;
 
-function deletePlan(req, res){
-    const planId = parseInt(req.params.id);
-    const index = plans.findIndex(p => p.id === planId);
+  try {
+    const result = await pool.query(
+      `UPDATE plans
+      SET title = $1, genre = $2, author = $3
+      WHERE id=$4
+      RETURNING *`,
+      [title, genre, author, id]
+    );
 
-    if(index === -1) {
-        return res.status(404).json({error: '기획서를 찾을 수 없습니다.'});
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Plan not found' });
     }
 
-    const deleted = plans.splice(index, 1);
-    savePlans(plans);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(`Error updating plan:`, error);
+    res.status(500).json({ error: 'DB error' });
+  }
+};
 
-    return res.status(200).json({
-      message: `ID가 ${planId}인 기획서가 삭제되었습니다.`,
-      deleted: deleted[0],
-    });
-}
+exports.deletePlan = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM plans WHERE id = $1 RETURNING *', [id]);
 
-/*module.exports = {
-    createPlan,
-    updatePlan,
-    deletePlan,
-};*/
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Plan not found' });
+    }
+
+    res.status(200).json({ message: 'Plan deleted successfully' });
+  } catch (err) {
+    console.error('DB Error:', err);
+    res.status(500).json({ error: 'DB error' });
+  }
+};
